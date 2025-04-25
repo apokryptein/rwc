@@ -1,5 +1,5 @@
 use clap::Parser;
-use std::fs;
+use std::{fs,io};
 
 #[derive(Parser, Debug)]
 #[command(name="rwc", version, about="A small word count utility written in Rust")]
@@ -18,7 +18,7 @@ struct Args {
 
     /// File 
     #[arg()]
-    file: String,
+    file: Option<String>,
 }
 
 fn main() {
@@ -26,11 +26,17 @@ fn main() {
     let args = Args::parse();
 
     // Read file into string
-    let contents = match fs::read_to_string(&args.file) {
-        Ok(text) => text,
-        Err(_) => {
-            eprintln!("Error reading file: {}", args.file);
+    let contents = match &args.file {
+        Some(filename) => fs::read_to_string(filename).unwrap_or_else(|_| {
+            eprintln!("Error reading file: {}", filename);
             std::process::exit(1);
+        }),
+        None => {
+            let mut input = String::new();
+            io::stdin()
+                .read_line(&mut input)
+                .expect("Failed to read from stdin");
+            input
         }
     };
 
@@ -70,5 +76,9 @@ fn main() {
     }
     
     // Print result to console
-    println!("{} {}", result.join(" "), args.file);
+    if args.file.is_some() {
+        println!("{} {}", result.join(" "), args.file.as_deref().unwrap_or("-"));
+    } else {
+        println!("{}", result.join(" "));
+    }
 }
