@@ -26,6 +26,8 @@ struct Args {
     files: Vec<String>,
 }
 
+// Stores filename and counts for each supplied file
+// or piped input from stdin
 struct Result {
     filename: String,
     lines: usize,
@@ -38,6 +40,9 @@ fn main() {
     let args = Args::parse();
     let results: Vec<_> = get_input(&args).collect();
 
+    // Variables to store max count values
+    // Used to provide totals when multiple files are provided
+    // and to determine appropriate column width for output
     let (mut word_total, mut line_total, mut byte_total) = (0, 0, 0);
 
     // Get largest number to determine column width
@@ -50,6 +55,7 @@ fn main() {
     // Get number of digits in largest number
     let column_width = largest_value.to_string().chars().count();
 
+    // Iterate over results, sum values, and output data
     for result in results {
         line_total += result.lines;
         word_total += result.words;
@@ -57,7 +63,7 @@ fn main() {
         print_file_data(&result, args.lines, args.words, args.bytes, column_width);
     }
 
-    // Print totals
+    // Print totals if more than one file has been provided
     if args.files.len() > 1 {
         println!(
             "{0: >column_width$} {1: >column_width$} {2: >column_width$} total",
@@ -72,13 +78,8 @@ fn get_input(args: &Args) -> impl Iterator<Item = Result> {
     // Vec of Result to store all result from provided files
     let mut results: Vec<Result> = Vec::new();
 
-    if args.files.is_empty() {
-        let mut input = String::new();
-        io::stdin()
-            .read_to_string(&mut input)
-            .expect("Failed to read from stdin");
-        results.push(parse_input(input.as_str(), "-"));
-    } else {
+    // If files were provided read and parse them
+    if !args.files.is_empty() {
         for file in &args.files {
             match fs::read_to_string(file) {
                 Ok(content) => {
@@ -87,6 +88,13 @@ fn get_input(args: &Args) -> impl Iterator<Item = Result> {
                 Err(_) => continue,
             };
         }
+    // If piped input from stdin or no args
+    } else {
+        let mut input = String::new();
+        io::stdin()
+            .read_to_string(&mut input)
+            .expect("Failed to read from stdin");
+        results.push(parse_input(input.as_str(), "-"));
     }
 
     results.into_iter()
@@ -105,6 +113,7 @@ fn parse_input(input: &str, file: &str) -> Result {
 
 // Prints data for one processed file
 fn print_file_data(result: &Result, lines: bool, words: bool, bytes: bool, width: usize) {
+    // Vec to build output string
     let mut output = Vec::new();
 
     // wc displays results in the following order:
