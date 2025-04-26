@@ -36,11 +36,41 @@ struct Result {
 fn main() {
     // Parse Args
     let args = Args::parse();
-
-    // Vec of Result to store all result from provided files
-    let mut results: Vec<Result> = Vec::new();
+    let results: Vec<_> = get_input(&args).collect();
 
     let (mut word_total, mut line_total, mut byte_total) = (0, 0, 0);
+
+    // Get largest number to determine column width
+    let largest_value = results
+        .iter()
+        .flat_map(|res| vec![res.lines, res.words, res.bytes])
+        .max()
+        .unwrap_or(0);
+
+    // Get number of digits in largest number
+    let column_width = largest_value.to_string().chars().count();
+
+    for result in results {
+        line_total += result.lines;
+        word_total += result.words;
+        byte_total += result.bytes;
+        print_file_data(&result, args.lines, args.words, args.bytes, column_width);
+    }
+
+    // Print totals
+    if args.files.len() > 1 {
+        println!(
+            "{0: >column_width$} {1: >column_width$} {2: >column_width$} total",
+            line_total, word_total, byte_total
+        );
+    }
+}
+
+// Parses argument to retrieve input and store in Result
+// or Vec<Result> then returns an iterator
+fn get_input(args: &Args) -> impl Iterator<Item = Result> {
+    // Vec of Result to store all result from provided files
+    let mut results: Vec<Result> = Vec::new();
 
     if args.files.is_empty() {
         let mut input = String::new();
@@ -52,39 +82,14 @@ fn main() {
         for file in &args.files {
             match fs::read_to_string(file) {
                 Ok(content) => {
-                    let result = parse_input(&content, file);
-                    line_total += result.lines;
-                    word_total += result.words;
-                    byte_total += result.bytes;
-                    results.push(result);
+                    results.push(parse_input(&content, file));
                 }
                 Err(_) => continue,
             };
         }
     }
 
-    // Get largest number to determine column width
-    let largest_value = [line_total, word_total, byte_total]
-        .iter()
-        .copied()
-        .max()
-        .unwrap();
-
-    // Get number of digits in largest number
-    let column_width = largest_value.to_string().chars().count();
-
-    // Print data for each result
-    for res in results {
-        print_file_data(&res, args.lines, args.words, args.bytes, column_width);
-    }
-
-    // Print totals
-    if args.files.len() > 1 {
-        println!(
-            "{0: >column_width$} {1: >column_width$} {2: >column_width$} total",
-            line_total, word_total, byte_total
-        );
-    }
+    results.into_iter()
 }
 
 // Parses input according to selected flags
@@ -136,8 +141,8 @@ fn print_file_data(result: &Result, lines: bool, words: bool, bytes: bool, width
         println!("{}", output.join("\t"));
     } else {
         println!(
-            "{0: >width$} {1: >width$} {2: >width$}",
-            output[0], output[1], output[2]
+            "{0: >width$} {1: >width$} {2: >width$} {3:}",
+            output[0], output[1], output[2], result.filename
         );
     }
 }
